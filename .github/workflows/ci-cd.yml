@@ -11,7 +11,7 @@ on:
       - "infrastructure/**"
 
 env:
-  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  PROJECT_ID: win-job-devops-scraper
   REGION: southamerica-east1
   REPOSITORY: devops-jobs
 
@@ -102,7 +102,7 @@ jobs:
           output: "trivy-results.sarif"
 
       - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: "trivy-results.sarif"

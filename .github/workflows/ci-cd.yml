@@ -174,8 +174,7 @@ jobs:
             --cpu 1 \
             --min-instances 0 \
             --max-instances 10 \
-            --port 8080 \
-            --set-env-vars PORT=8080
+            --port 8080
 
       - name: Deploy to Cloud Run - Frontend
         run: |

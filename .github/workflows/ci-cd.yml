@@ -1,10 +1,14 @@
-name: CI/CD Pipeline
+name: Application CI/CD Pipeline
 
 on:
   push:
     branches: [main, develop]
+    paths-ignore:
+      - "infrastructure/**" # Ignore infrastructure changes
   pull_request:
     branches: [main]
+    paths-ignore:
+      - "infrastructure/**"
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
@@ -119,6 +123,17 @@ jobs:
 
       - name: "Set up Cloud SDK"
         uses: "google-github-actions/setup-gcloud@v2"
+
+      - name: Verify Infrastructure
+        run: |
+          echo "🔍 Verifying that infrastructure exists..."
+          # Check if Artifact Registry exists
+          if ! gcloud artifacts repositories describe $REPOSITORY --location=$REGION 2>/dev/null; then
+            echo "❌ Artifact Registry repository not found!"
+            echo "🏗️ Please run infrastructure deployment first on 'integration' branch"
+            exit 1
+          fi
+          echo "✅ Infrastructure verified!"
 
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker $REGION-docker.pkg.dev

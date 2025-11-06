@@ -48,9 +48,11 @@ class LinkedInScraper:
             # Build search URL
             search_url = f"{self.base_url}/jobs/search?"
             search_url += f"keywords={search_term.replace(' ', '%20')}"
-            search_url += f"&location={location.replace(' ', '%20')}"
+            if location and location.lower() != "worldwide":
+                search_url += f"&location={location.replace(' ', '%20')}"
             search_url += "&f_TPR=r86400"  # Last 24 hours
             search_url += "&f_JT=F"  # Full-time only
+            search_url += "&f_WRA=true"  # Remote jobs
             
             logger.info(f"Searching jobs with URL: {search_url}")
             self.driver.get(search_url)
@@ -226,6 +228,42 @@ class LinkedInScraper:
     def __del__(self):
         self.close()
 
+
+def search_multiple_regions(search_term: str = "DevOps", max_jobs_per_region: int = 20) -> Dict:
+    """Search jobs across multiple Spanish-speaking regions"""
+    regions = [
+        "España", "México", "Argentina", "Colombia", "Chile", 
+        "Perú", "Uruguay", "Costa Rica", "Remote"
+    ]
+    
+    all_jobs = []
+    scraper = LinkedInScraper()
+    
+    try:
+        for region in regions:
+            logger.info(f"Searching in {region}...")
+            jobs = scraper.search_jobs(search_term, region, max_jobs_per_region)
+            
+            # Add region tag to jobs
+            for job in jobs:
+                job['search_region'] = region
+                
+            all_jobs.extend(jobs)
+            
+            # Rate limiting - wait between regions
+            time.sleep(3)
+            
+    except Exception as e:
+        logger.error(f"Multi-region search failed: {e}")
+    finally:
+        scraper.close()
+    
+    return {
+        'success': True,
+        'jobs_found': len(all_jobs),
+        'regions_searched': regions,
+        'jobs_data': all_jobs
+    }
 
 def scrape_linkedin_jobs(search_term: str = "DevOps", 
                         location: str = "España", 

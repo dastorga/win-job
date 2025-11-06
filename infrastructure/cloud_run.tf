@@ -56,7 +56,7 @@ resource "google_cloud_run_service" "backend" {
 
         env {
           name  = "DATABASE_URL"
-          value = "postgresql://${google_sql_user.user.name}:${google_sql_user.user.password}@${google_sql_database_instance.main.connection_name}/${google_sql_database.database.name}"
+          value = "postgresql://${google_sql_user.user.name}:${google_sql_user.user.password}@/${google_sql_database.database.name}?host=/cloudsql/${google_sql_database_instance.main.connection_name}"
         }
 
         env {

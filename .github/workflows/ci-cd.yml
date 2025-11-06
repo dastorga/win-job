@@ -10,6 +10,11 @@ on:
     paths-ignore:
       - "infrastructure/**"
 
+permissions:
+  contents: read
+  security-events: write
+  id-token: write
+
 env:
   PROJECT_ID: win-job-devops-scraper
   REGION: southamerica-east1
@@ -111,6 +116,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     # needs: [test-backend, test-frontend, security-scan]
     runs-on: ubuntu-latest
+    environment: dev
 
     steps:
       - uses: actions/checkout@v4
@@ -195,6 +201,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     needs: build-and-deploy
     runs-on: ubuntu-latest
+    environment: dev
 
     steps:
       - name: Notify deployment success

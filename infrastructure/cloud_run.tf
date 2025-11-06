@@ -46,6 +46,7 @@ resource "google_cloud_run_service" "backend" {
 
   template {
     spec {
+      service_account_name = google_service_account.app_service_account.email
       containers {
         image = "${var.region}-docker.pkg.dev/${var.project_id}/devops-jobs/backend:latest"
 
@@ -101,6 +102,7 @@ resource "google_cloud_run_service" "frontend" {
 
   template {
     spec {
+      service_account_name = google_service_account.app_service_account.email
       containers {
         image = "${var.region}-docker.pkg.dev/${var.project_id}/devops-jobs/frontend:latest"
 
@@ -138,17 +140,26 @@ resource "google_cloud_run_service" "frontend" {
   depends_on = [google_project_service.apis]
 }
 
-# IAM policy to allow unauthenticated access
-resource "google_cloud_run_service_iam_member" "backend_public" {
-  service  = google_cloud_run_service.backend.name
-  location = google_cloud_run_service.backend.location
-  role     = "roles/run.invoker"
-  member   = "allUsers"
-}
-
+# IAM policy for frontend (public web access needed)
 resource "google_cloud_run_service_iam_member" "frontend_public" {
   service  = google_cloud_run_service.frontend.name
   location = google_cloud_run_service.frontend.location
   role     = "roles/run.invoker"
   member   = "allUsers"
+}
+
+# IAM policy for backend - more restrictive (only authenticated users)
+resource "google_cloud_run_service_iam_member" "backend_restricted" {
+  service  = google_cloud_run_service.backend.name
+  location = google_cloud_run_service.backend.location
+  role     = "roles/run.invoker"
+  member   = "allAuthenticatedUsers"
+}
+
+# Allow frontend to access backend
+resource "google_cloud_run_service_iam_member" "frontend_to_backend" {
+  service  = google_cloud_run_service.backend.name
+  location = google_cloud_run_service.backend.location
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${google_service_account.app_service_account.email}"
 }

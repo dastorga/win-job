@@ -1,3 +1,4 @@
+# DevOps Job Scraper Infrastructure - GCP Deployment
 terraform {
   required_version = ">= 1.0"
   required_providers {

@@ -1,3 +1,23 @@
+# Enable Cloud Resource Manager API first (required for managing other APIs)
+resource "google_project_service" "resource_manager" {
+  project = var.project_id
+  service = "cloudresourcemanager.googleapis.com"
+
+  disable_dependent_services = false
+  disable_on_destroy         = false
+}
+
+# Enable Service Usage API (required for managing other APIs)
+resource "google_project_service" "service_usage" {
+  project = var.project_id
+  service = "serviceusage.googleapis.com"
+
+  disable_dependent_services = false
+  disable_on_destroy         = false
+
+  depends_on = [google_project_service.resource_manager]
+}
+
 # Enable required APIs
 resource "google_project_service" "apis" {
   for_each = toset([
@@ -5,15 +25,24 @@ resource "google_project_service" "apis" {
     "sql-component.googleapis.com",
     "sqladmin.googleapis.com",
     "storage-component.googleapis.com",
+    "storage.googleapis.com",
     "cloudbuild.googleapis.com",
     "artifactregistry.googleapis.com",
-    "secretmanager.googleapis.com"
+    "secretmanager.googleapis.com",
+    "iam.googleapis.com",
+    "iamcredentials.googleapis.com"
   ])
 
   project = var.project_id
   service = each.value
 
-  disable_dependent_services = true
+  disable_dependent_services = false
+  disable_on_destroy         = false
+
+  depends_on = [
+    google_project_service.resource_manager,
+    google_project_service.service_usage
+  ]
 }
 
 # Cloud SQL Instance
@@ -84,4 +113,24 @@ resource "google_artifact_registry_repository" "docker_repo" {
   format        = "DOCKER"
 
   depends_on = [google_project_service.apis]
+}
+
+# Service Account for application
+resource "google_service_account" "app_service_account" {
+  account_id   = "devops-jobs-app"
+  display_name = "DevOps Jobs Application Service Account"
+  description  = "Service account for DevOps Jobs application services"
+}
+
+# IAM roles for the service account
+resource "google_project_iam_member" "app_service_account_roles" {
+  for_each = toset([
+    "roles/cloudsql.client",
+    "roles/storage.objectViewer",
+    "roles/secretmanager.secretAccessor"
+  ])
+
+  project = var.project_id
+  role    = each.value
+  member  = "serviceAccount:${google_service_account.app_service_account.email}"
 }

@@ -85,3 +85,23 @@ resource "google_artifact_registry_repository" "docker_repo" {
 
   depends_on = [google_project_service.apis]
 }
+
+# Service Account for application
+resource "google_service_account" "app_service_account" {
+  account_id   = "devops-jobs-app"
+  display_name = "DevOps Jobs Application Service Account"
+  description  = "Service account for DevOps Jobs application services"
+}
+
+# IAM roles for the service account
+resource "google_project_iam_member" "app_service_account_roles" {
+  for_each = toset([
+    "roles/cloudsql.client",
+    "roles/storage.objectViewer",
+    "roles/secretmanager.secretAccessor"
+  ])
+
+  project = var.project_id
+  role    = each.value
+  member  = "serviceAccount:${google_service_account.app_service_account.email}"
+}

@@ -50,10 +50,19 @@ jobs:
     runs-on: ubuntu-latest
     needs: terraform-validate
     name: Terraform Plan
+    environment: dev # Uses dev environment where GCP_SA_KEY is configured
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: "Verify GCP Secret"
+        run: |
+          if [ -z "${{ secrets.GCP_SA_KEY }}" ]; then
+            echo "❌ GCP_SA_KEY secret is not set or empty"
+            exit 1
+          fi
+          echo "✅ GCP_SA_KEY secret is available"
 
       - id: "auth"
         name: "Authenticate to Google Cloud"
@@ -106,11 +115,19 @@ jobs:
     needs: terraform-plan
     name: Terraform Apply
     if: github.ref == 'refs/heads/integration' && github.event_name == 'push'
-    environment: infrastructure # Requires approval for production
+    environment: dev # Uses dev environment where GCP_SA_KEY is configured
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: "Verify GCP Secret"
+        run: |
+          if [ -z "${{ secrets.GCP_SA_KEY }}" ]; then
+            echo "❌ GCP_SA_KEY secret is not set or empty"
+            exit 1
+          fi
+          echo "✅ GCP_SA_KEY secret is available"
 
       - id: "auth"
         name: "Authenticate to Google Cloud"

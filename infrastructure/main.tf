@@ -8,7 +8,7 @@ terraform {
   }
 
   backend "gcs" {
-    bucket = "your-terraform-state-bucket"
+    bucket = "win-job-terraform-state-bucket"
     prefix = "devops-job-scraper"
   }
 }
@@ -23,18 +23,19 @@ provider "google" {
 variable "project_id" {
   description = "Google Cloud Project ID"
   type        = string
+  default     = "win-job-devops-scraper"
 }
 
 variable "region" {
   description = "Google Cloud Region"
   type        = string
-  default     = "europe-west1"
+  default     = "southamerica-east1"
 }
 
 variable "zone" {
   description = "Google Cloud Zone"
   type        = string
-  default     = "europe-west1-b"
+  default     = "southamerica-east1-a"
 }
 
 variable "environment" {

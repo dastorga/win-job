@@ -8,7 +8,7 @@ on:
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  REGION: europe-west1
+  REGION: southamerica-east1
   REPOSITORY: devops-jobs
 
 jobs:

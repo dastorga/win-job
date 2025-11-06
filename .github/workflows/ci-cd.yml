@@ -173,7 +173,9 @@ jobs:
             --memory 1Gi \
             --cpu 1 \
             --min-instances 0 \
-            --max-instances 10
+            --max-instances 10 \
+            --port 8080 \
+            --set-env-vars PORT=8080
 
       - name: Deploy to Cloud Run - Frontend
         run: |
@@ -189,6 +191,7 @@ jobs:
             --cpu 1 \
             --min-instances 0 \
             --max-instances 5 \
+            --port 80 \
             --set-env-vars REACT_APP_API_URL=$BACKEND_URL
 
       - name: Run database migrations

@@ -1,6 +1,6 @@
 # DevOps Job Scraper 🚀
 
-Sistema completo para extraer y analizar ofertas de trabajo DevOps desde LinkedIn, filtrando específicamente aquellas que **NO requieren inglés**.
+Sistema completo para extraer y analizar ofertas de trabajo DevOps desde LinkedIn, filtrando específicamente aquellas que **NO requieren inglés**. ✨ Sistema desplegado y operativo.
 
 ## 🎯 Características Principales
 

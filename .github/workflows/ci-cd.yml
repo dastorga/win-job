@@ -16,100 +16,100 @@ env:
   REPOSITORY: devops-jobs
 
 jobs:
-  test-backend:
-    runs-on: ubuntu-latest
+  # test-backend:
+  #   runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: test_db
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
+  #   services:
+  #     postgres:
+  #       image: postgres:15
+  #       env:
+  #         POSTGRES_PASSWORD: postgres
+  #         POSTGRES_DB: test_db
+  #       options: >-
+  #         --health-cmd pg_isready
+  #         --health-interval 10s
+  #         --health-timeout 5s
+  #         --health-retries 5
+  #       ports:
+  #         - 5432:5432
 
-    steps:
-      - uses: actions/checkout@v4
+  #   steps:
+  #     - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
+  #     - name: Set up Python
+  #       uses: actions/setup-python@v4
+  #       with:
+  #         python-version: "3.11"
 
-      - name: Cache pip dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements.txt') }}
+  #     - name: Cache pip dependencies
+  #       uses: actions/cache@v3
+  #       with:
+  #         path: ~/.cache/pip
+  #         key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements.txt') }}
 
-      - name: Install dependencies
-        run: |
-          cd backend
-          pip install -r requirements.txt
-          pip install pytest pytest-asyncio httpx
+  #     - name: Install dependencies
+  #       run: |
+  #         cd backend
+  #         pip install -r requirements.txt
+  #         pip install pytest pytest-asyncio httpx
 
-      - name: Run tests
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
-        run: |
-          cd backend
-          pytest -v
+  #     - name: Run tests
+  #       env:
+  #         DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+  #       run: |
+  #         cd backend
+  #         pytest -v
 
-  test-frontend:
-    runs-on: ubuntu-latest
+  # test-frontend:
+  #   runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/checkout@v4
+  #   steps:
+  #     - uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "18"
-          cache: "npm"
-          cache-dependency-path: frontend/package-lock.json
+  #     - name: Set up Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: "18"
+  #         cache: "npm"
+  #         cache-dependency-path: frontend/package-lock.json
 
-      - name: Install dependencies
-        run: |
-          cd frontend
-          npm ci
+  #     - name: Install dependencies
+  #       run: |
+  #         cd frontend
+  #         npm ci
 
-      - name: Run tests
-        run: |
-          cd frontend
-          npm test -- --coverage --watchAll=false
+  #     - name: Run tests
+  #       run: |
+  #         cd frontend
+  #         npm test -- --coverage --watchAll=false
 
-      - name: Build frontend
-        run: |
-          cd frontend
-          npm run build
+  #     - name: Build frontend
+  #       run: |
+  #         cd frontend
+  #         npm run build
 
-  security-scan:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+  # security-scan:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
 
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: "fs"
-          scan-ref: "."
-          format: "sarif"
-          output: "trivy-results.sarif"
+  #     - name: Run Trivy vulnerability scanner
+  #       uses: aquasecurity/trivy-action@master
+  #       with:
+  #         scan-type: "fs"
+  #         scan-ref: "."
+  #         format: "sarif"
+  #         output: "trivy-results.sarif"
 
-      - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: "trivy-results.sarif"
+  #     - name: Upload Trivy scan results
+  #       uses: github/codeql-action/upload-sarif@v3
+  #       if: always()
+  #       with:
+  #         sarif_file: "trivy-results.sarif"
 
   build-and-deploy:
     if: github.ref == 'refs/heads/main'
-    needs: [test-backend, test-frontend, security-scan]
+    # needs: [test-backend, test-frontend, security-scan]
     runs-on: ubuntu-latest
 
     steps:

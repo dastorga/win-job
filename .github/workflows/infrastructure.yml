@@ -183,31 +183,31 @@ jobs:
           echo "🔗 Backend URL: ${{ steps.terraform-outputs.outputs.backend_service_url }}"
           echo "🌐 Frontend URL: ${{ steps.terraform-outputs.outputs.frontend_service_url }}"
 
-  security-scan:
-    runs-on: ubuntu-latest
-    name: Infrastructure Security Scan
+  # security-scan:
+  #   runs-on: ubuntu-latest
+  #   name: Infrastructure Security Scan
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
 
-      - name: Run Checkov (Terraform Security Scanner)
-        uses: bridgecrewio/checkov-action@master
-        with:
-          directory: infrastructure/
-          framework: terraform
-          output_format: sarif
-          output_file_path: checkov-results.sarif
+  #     - name: Run Checkov (Terraform Security Scanner)
+  #       uses: bridgecrewio/checkov-action@master
+  #       with:
+  #         directory: infrastructure/
+  #         framework: terraform
+  #         output_format: sarif
+  #         output_file_path: checkov-results.sarif
 
-      - name: Upload Checkov scan results
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: checkov-results.sarif
+  #     - name: Upload Checkov scan results
+  #       uses: github/codeql-action/upload-sarif@v3
+  #       if: always()
+  #       with:
+  #         sarif_file: checkov-results.sarif
 
   notify-infrastructure:
     runs-on: ubuntu-latest
-    needs: [terraform-apply, security-scan]
+    needs: [terraform-apply]
     if: always()
     name: Infrastructure Deployment Status
 

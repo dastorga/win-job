@@ -48,10 +48,10 @@ resource "google_cloud_run_service" "backend" {
     spec {
       service_account_name = google_service_account.app_service_account.email
       containers {
-        image = "${var.region}-docker.pkg.dev/${var.project_id}/devops-jobs/backend:latest"
+        image = "gcr.io/cloudrun/hello" # Temporary placeholder image
 
         ports {
-          container_port = 8000
+          container_port = 8080
         }
 
         env {
@@ -104,10 +104,10 @@ resource "google_cloud_run_service" "frontend" {
     spec {
       service_account_name = google_service_account.app_service_account.email
       containers {
-        image = "${var.region}-docker.pkg.dev/${var.project_id}/devops-jobs/frontend:latest"
+        image = "gcr.io/cloudrun/hello" # Temporary placeholder image
 
         ports {
-          container_port = 80
+          container_port = 8080
         }
 
         env {

@@ -156,8 +156,7 @@ jobs:
 
       - name: Build and push frontend image
         run: |
-          cd frontend
-          docker build -f ../docker/Dockerfile.frontend -t $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/frontend:$GITHUB_SHA .
+          docker build -f docker/Dockerfile.frontend -t $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/frontend:$GITHUB_SHA .
           docker push $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/frontend:$GITHUB_SHA
 
           # Tag as latest

@@ -1,3 +1,5 @@
+import { describe, test, expect } from '@jest/globals';
+
 describe('Dashboard Component', () => {
   test('basic test passes', () => {
     expect(2 + 2).toBe(4);

@@ -178,7 +178,7 @@ jobs:
             --min-instances 0 \
             --max-instances 10 \
             --port 8080 \
-            --set-env-vars="DATABASE_URL=postgresql://app_user:${DB_PASSWORD}@/devops_jobs?host=/cloudsql/$PROJECT_ID:$REGION:devops-jobs-dev"
+            --set-env-vars="INSTANCE_CONNECTION_NAME=$PROJECT_ID:$REGION:devops-jobs-dev,DB_USER=app_user,DB_PASSWORD=${DB_PASSWORD},DB_NAME=devops_jobs"
 
       - name: Deploy to Cloud Run - Frontend
         run: |

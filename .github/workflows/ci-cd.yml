@@ -165,6 +165,9 @@ jobs:
 
       - name: Deploy to Cloud Run - Backend
         run: |
+          # Get database password from Secret Manager
+          DB_PASSWORD=$(gcloud secrets versions access latest --secret="db-password")
+
           gcloud run deploy devops-jobs-backend \
             --image $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/backend:$GITHUB_SHA \
             --region $REGION \
@@ -174,7 +177,8 @@ jobs:
             --cpu 1 \
             --min-instances 0 \
             --max-instances 10 \
-            --port 8080
+            --port 8080 \
+            --set-env-vars="DATABASE_URL=postgresql://app_user:${DB_PASSWORD}@/devops_jobs?host=/cloudsql/$PROJECT_ID:$REGION:devops-jobs-dev"
 
       - name: Deploy to Cloud Run - Frontend
         run: |

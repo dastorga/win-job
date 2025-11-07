@@ -13,22 +13,21 @@ RUN apt-get update && apt-get install -y \
   ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
-# Install Chrome for Selenium (modern method)
-RUN wget -q -O /tmp/google-chrome-key.pub https://dl-ssl.google.com/linux/linux_signing_key.pub \
-  && gpg --dearmor < /tmp/google-chrome-key.pub > /usr/share/keyrings/google-chrome-keyring.gpg \
-  && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list \
+# Install Chrome for Selenium (updated method for Chrome 120+)
+RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
+  && echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list \
   && apt-get update \
   && apt-get install -y google-chrome-stable \
-  && rm -rf /var/lib/apt/lists/* /tmp/google-chrome-key.pub
+  && rm -rf /var/lib/apt/lists/*
 
-# Install ChromeDriver
-RUN CHROMEDRIVER_VERSION=$(curl -sS https://chromedriver.storage.googleapis.com/LATEST_RELEASE) && \
-  mkdir -p /opt/chromedriver-$CHROMEDRIVER_VERSION && \
-  curl -sS -o /tmp/chromedriver_linux64.zip https://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip && \
-  unzip -qq /tmp/chromedriver_linux64.zip -d /opt/chromedriver-$CHROMEDRIVER_VERSION && \
-  rm /tmp/chromedriver_linux64.zip && \
-  chmod +x /opt/chromedriver-$CHROMEDRIVER_VERSION/chromedriver && \
-  ln -fs /opt/chromedriver-$CHROMEDRIVER_VERSION/chromedriver /usr/local/bin/chromedriver
+# Install Chrome for Testing with matching ChromeDriver (modern approach)
+RUN CHROME_VERSION=$(google-chrome --version | cut -d ' ' -f3 | cut -d '.' -f1-3) && \
+  echo "Chrome version: $CHROME_VERSION" && \
+  wget -O /tmp/chromedriver-linux64.zip "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/120.0.6099.109/linux64/chromedriver-linux64.zip" && \
+  unzip -qq /tmp/chromedriver-linux64.zip -d /tmp && \
+  mv /tmp/chromedriver-linux64/chromedriver /usr/local/bin/chromedriver && \
+  chmod +x /usr/local/bin/chromedriver && \
+  rm -rf /tmp/chromedriver-linux64* /tmp/chromedriver-linux64.zip
 
 # Copy requirements and install Python dependencies
 COPY requirements.txt .

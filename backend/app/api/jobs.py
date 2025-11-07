@@ -172,3 +172,111 @@ async def get_job_stats(db: Session = Depends(get_db)):
     except Exception as e:
         logger.error(f"Error getting job stats: {e}")
         raise HTTPException(status_code=500, detail="Error getting statistics")
+
+@router.post("/seed-test-data")
+def create_test_data(db: Session = Depends(get_db)):
+    """Create test data for frontend development and testing"""
+    try:
+        # Check if test data already exists
+        existing_jobs = db.query(Job).filter(Job.title.like('%TEST%')).count()
+        if existing_jobs > 0:
+            return {"message": f"Test data already exists ({existing_jobs} test jobs found)"}
+        
+        # Sample test jobs
+        test_jobs = [
+            {
+                "title": "DevOps Engineer - TEST",
+                "company": "TechCorp Chile",
+                "location": "Santiago, Chile",
+                "description": "Buscamos un DevOps Engineer con experiencia en AWS, Docker y Kubernetes. Trabajo remoto disponible.",
+                "requirements": "3+ años experiencia, Docker, Kubernetes, CI/CD",
+                "employment_type": "Full-time",
+                "seniority_level": "Mid-level",
+                "linkedin_job_id": "test-job-001",
+                "linkedin_url": "https://linkedin.com/jobs/test-001",
+                "requires_english": False,
+                "match_score": 0.95,
+                "posted_date": datetime.now(),
+                "is_active": True
+            },
+            {
+                "title": "Senior DevOps Engineer - TEST",
+                "company": "InnovaTech",
+                "location": "Valparaíso, Chile",
+                "description": "Empresa chilena busca Senior DevOps para liderar transformación digital. Excelente ambiente laboral.",
+                "requirements": "5+ años experiencia, AWS, Terraform, Python",
+                "employment_type": "Full-time",
+                "seniority_level": "Senior",
+                "linkedin_job_id": "test-job-002",
+                "linkedin_url": "https://linkedin.com/jobs/test-002",
+                "requires_english": False,
+                "match_score": 0.88,
+                "posted_date": datetime.now(),
+                "is_active": True
+            },
+            {
+                "title": "DevOps Specialist - TEST",
+                "company": "StartupChile",
+                "location": "Concepción, Chile", 
+                "description": "Startup innovadora busca DevOps para implementar infraestructura escalable. Sin requisito de inglés.",
+                "requirements": "2+ años experiencia, Git, Jenkins, Linux",
+                "employment_type": "Full-time",
+                "seniority_level": "Junior",
+                "linkedin_job_id": "test-job-003",
+                "linkedin_url": "https://linkedin.com/jobs/test-003",
+                "requires_english": False,
+                "match_score": 0.78,
+                "posted_date": datetime.now(),
+                "is_active": True
+            },
+            {
+                "title": "Platform Engineer - TEST",
+                "company": "CloudSolutions",
+                "location": "La Serena, Chile",
+                "description": "Ingeniero de plataforma para arquitectura cloud. Trabajo 100% en español.",
+                "requirements": "3+ años experiencia, GCP, Docker, Monitoring",
+                "employment_type": "Contract",
+                "seniority_level": "Mid-level",
+                "linkedin_job_id": "test-job-004",
+                "linkedin_url": "https://linkedin.com/jobs/test-004",
+                "requires_english": False,
+                "match_score": 0.82,
+                "posted_date": datetime.now(),
+                "is_active": True
+            },
+            {
+                "title": "Infrastructure Engineer - TEST",
+                "company": "DigitalChile",
+                "location": "Temuco, Chile",
+                "description": "Ingeniero de infraestructura para modernización tecnológica. Comunicación en español.",
+                "requirements": "4+ años experiencia, VMware, Ansible, Networking",
+                "employment_type": "Full-time", 
+                "seniority_level": "Senior",
+                "linkedin_job_id": "test-job-005",
+                "linkedin_url": "https://linkedin.com/jobs/test-005",
+                "requires_english": False,
+                "match_score": 0.75,
+                "posted_date": datetime.now(),
+                "is_active": True
+            }
+        ]
+        
+        # Add test jobs to database
+        created_jobs = []
+        for job_data in test_jobs:
+            job = Job(**job_data)
+            db.add(job)
+            created_jobs.append(job_data["title"])
+        
+        db.commit()
+        
+        return {
+            "message": "Test data created successfully",
+            "jobs_created": len(created_jobs),
+            "job_titles": created_jobs
+        }
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error creating test data: {e}")
+        raise HTTPException(status_code=500, detail=f"Error creating test data: {str(e)}")

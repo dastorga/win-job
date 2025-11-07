@@ -3,11 +3,14 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
 import time
 import re
 import logging
+import os
 from typing import List, Dict, Optional
 from app.models.models import Job, ScrapeLog
 from app.database.database import get_db
@@ -31,8 +34,25 @@ class LinkedInScraper:
         chrome_options.add_argument("--disable-gpu")
         chrome_options.add_argument("--window-size=1920,1080")
         chrome_options.add_argument("--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36")
+        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+        chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        chrome_options.add_experimental_option('useAutomationExtension', False)
         
-        self.driver = webdriver.Chrome(options=chrome_options)
+        # Use WebDriverManager for automatic driver management or fallback to local driver
+        try:
+            if os.path.exists('/usr/local/bin/chromedriver'):
+                # Use local chromedriver in Docker container
+                service = Service('/usr/local/bin/chromedriver')
+                self.driver = webdriver.Chrome(service=service, options=chrome_options)
+            else:
+                # Use WebDriverManager for local development
+                service = Service(ChromeDriverManager().install())
+                self.driver = webdriver.Chrome(service=service, options=chrome_options)
+        except Exception as e:
+            logger.error(f"Error setting up Chrome driver: {e}")
+            # Fallback to default Chrome driver
+            self.driver = webdriver.Chrome(options=chrome_options)
+            
         self.wait = WebDriverWait(self.driver, 10)
     
     def search_jobs(self, 

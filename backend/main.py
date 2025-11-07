@@ -2,7 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from app.api import jobs, auth, users
-from app.database.database import engine, Base
+from app.database.database import engine
+from app.models.models import Base
 import os
 
 # Create database tables

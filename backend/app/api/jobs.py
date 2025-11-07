@@ -5,6 +5,8 @@ from typing import List, Optional
 from app.database.database import get_db
 from app.models.models import Job, JobApplication
 from app.services.linkedin_scraper import scrape_linkedin_jobs
+from app.services.linkedin_api_service import search_linkedin_jobs_api
+from app.services.linkedin_oauth_service import LinkedInOAuthService, get_linkedin_auth_url
 from pydantic import BaseModel
 from datetime import datetime
 import logging
@@ -42,6 +44,44 @@ class ScrapeResponse(BaseModel):
     jobs_without_english: int
     message: str
 
+class LinkedInAPIParams(BaseModel):
+    email: str
+    password: str
+    keywords: str = "DevOps"
+    location: str = "Chile"
+    limit: int = 50
+
+class LinkedInAPIResponse(BaseModel):
+    success: bool
+    jobs_found: int
+    jobs_saved: int
+    jobs_without_english: int
+    message: str
+    error: Optional[str] = None
+
+class OAuthURLResponse(BaseModel):
+    authorization_url: Optional[str]
+    state: Optional[str]
+    instructions: List[str]
+    error: Optional[str] = None
+
+class OAuthTokenRequest(BaseModel):
+    authorization_code: str
+    state: str
+
+class OAuthTokenResponse(BaseModel):
+    success: bool
+    access_token: Optional[str] = None
+    expires_in: Optional[int] = None
+    message: str
+    error: Optional[str] = None
+
+class OAuthJobSearchRequest(BaseModel):
+    access_token: str
+    keywords: str = "DevOps"
+    location: str = "Chile"
+    limit: int = 50
+
 @router.post("/scrape", response_model=ScrapeResponse)
 async def trigger_job_scrape(
     params: JobSearchParams,
@@ -76,6 +116,172 @@ async def trigger_job_scrape(
     except Exception as e:
         logger.error(f"Error in job scraping endpoint: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/scrape-api", response_model=LinkedInAPIResponse)
+async def trigger_linkedin_api_search(
+    params: LinkedInAPIParams,
+    db: Session = Depends(get_db)
+):
+    """
+    Trigger LinkedIn API job search with user credentials
+    """
+    try:
+        logger.info(f"Starting LinkedIn API search: {params.keywords} in {params.location}")
+        
+        result = search_linkedin_jobs_api(
+            email=params.email,
+            password=params.password,
+            keywords=params.keywords,
+            location=params.location,
+            limit=params.limit
+        )
+        
+        if result['success']:
+            return LinkedInAPIResponse(
+                success=True,
+                jobs_found=result['jobs_found'],
+                jobs_saved=result['jobs_saved'],
+                jobs_without_english=result['jobs_without_english'],
+                message=f"Successfully found {result['jobs_found']} jobs via LinkedIn API"
+            )
+        else:
+            return LinkedInAPIResponse(
+                success=False,
+                jobs_found=0,
+                jobs_saved=0,
+                jobs_without_english=0,
+                message="LinkedIn API search failed",
+                error=result['error']
+            )
+            
+    except Exception as e:
+        logger.error(f"Error in LinkedIn API endpoint: {e}")
+        return LinkedInAPIResponse(
+            success=False,
+            jobs_found=0,
+            jobs_saved=0,
+            jobs_without_english=0,
+            message="Internal server error",
+            error=str(e)
+        )
+
+@router.get("/oauth/auth-url", response_model=OAuthURLResponse)
+async def get_oauth_authorization_url():
+    """
+    Get LinkedIn OAuth authorization URL
+    """
+    try:
+        logger.info("Generating LinkedIn OAuth authorization URL")
+        
+        auth_data = get_linkedin_auth_url()
+        
+        if auth_data.get('authorization_url'):
+            return OAuthURLResponse(
+                authorization_url=auth_data['authorization_url'],
+                state=auth_data['state'],
+                instructions=auth_data.get('instructions', [])
+            )
+        else:
+            return OAuthURLResponse(
+                authorization_url=None,
+                state=None,
+                instructions=[],
+                error=auth_data.get('error', 'Failed to generate authorization URL')
+            )
+            
+    except Exception as e:
+        logger.error(f"Error generating OAuth URL: {e}")
+        return OAuthURLResponse(
+            authorization_url=None,
+            state=None,
+            instructions=[],
+            error=str(e)
+        )
+
+@router.post("/oauth/token", response_model=OAuthTokenResponse)
+async def exchange_oauth_code_for_token(request: OAuthTokenRequest):
+    """
+    Exchange OAuth authorization code for access token
+    """
+    try:
+        logger.info("Exchanging OAuth code for access token")
+        
+        oauth_service = LinkedInOAuthService()
+        result = oauth_service.get_access_token_from_code(
+            request.authorization_code, 
+            request.state
+        )
+        
+        if result['success']:
+            return OAuthTokenResponse(
+                success=True,
+                access_token=result['access_token'],
+                expires_in=result.get('expires_in'),
+                message=result['message']
+            )
+        else:
+            return OAuthTokenResponse(
+                success=False,
+                message=result['message'],
+                error=result['error']
+            )
+            
+    except Exception as e:
+        logger.error(f"Error exchanging OAuth code: {e}")
+        return OAuthTokenResponse(
+            success=False,
+            message="Internal server error",
+            error=str(e)
+        )
+
+@router.post("/oauth/search", response_model=LinkedInAPIResponse)
+async def search_jobs_with_oauth(request: OAuthJobSearchRequest):
+    """
+    Search LinkedIn jobs using OAuth access token
+    """
+    try:
+        logger.info(f"OAuth job search: {request.keywords} in {request.location}")
+        
+        oauth_service = LinkedInOAuthService()
+        oauth_service.access_token = request.access_token
+        
+        result = oauth_service.search_jobs_oauth(
+            request.keywords,
+            request.location,
+            request.limit
+        )
+        
+        if result['success']:
+            jobs = result['jobs']
+            jobs_without_english = len([j for j in jobs if not j.get('requires_english', False)])
+            
+            return LinkedInAPIResponse(
+                success=True,
+                jobs_found=result['jobs_found'],
+                jobs_saved=0,  # OAuth endpoint doesn't save to DB automatically
+                jobs_without_english=jobs_without_english,
+                message=f"Found {result['jobs_found']} jobs via OAuth"
+            )
+        else:
+            return LinkedInAPIResponse(
+                success=False,
+                jobs_found=0,
+                jobs_saved=0,
+                jobs_without_english=0,
+                message="OAuth job search failed",
+                error="Search failed"
+            )
+            
+    except Exception as e:
+        logger.error(f"Error in OAuth job search: {e}")
+        return LinkedInAPIResponse(
+            success=False,
+            jobs_found=0,
+            jobs_saved=0,
+            jobs_without_english=0,
+            message="Internal server error",
+            error=str(e)
+        )
 
 @router.get("/", response_model=List[JobResponse])
 async def get_jobs(

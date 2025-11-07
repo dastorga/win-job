@@ -26,7 +26,6 @@ class LinkedInScraper:
     def __init__(self, headless: bool = True):
         self.setup_driver(headless)
         self.base_url = "https://www.linkedin.com"
-        self.logged_in = False
         
     def setup_driver(self, headless: bool):
         """Configure Chrome WebDriver with appropriate options"""
@@ -63,84 +62,17 @@ class LinkedInScraper:
         except Exception as e:
             logger.error(f"Error setting up Chrome driver: {e}")
             self.driver = None
-
-    def login_to_linkedin(self, email: str, password: str) -> bool:
-        """
-        Login to LinkedIn with user credentials
-        """
-        try:
-            logger.info("Navigating to LinkedIn login page...")
-            self.driver.get("https://www.linkedin.com/login")
-            time.sleep(2)
-            
-            # Find and fill email field
-            email_field = self.wait.until(
-                EC.presence_of_element_located((By.ID, "username"))
-            )
-            email_field.clear()
-            email_field.send_keys(email)
-            
-            # Find and fill password field
-            password_field = self.driver.find_element(By.ID, "password")
-            password_field.clear()
-            password_field.send_keys(password)
-            
-            # Click login button
-            login_button = self.driver.find_element(By.XPATH, "//button[@type='submit']")
-            login_button.click()
-            
-            # Wait for login to complete
-            time.sleep(3)
-            
-            # Check if login was successful
-            current_url = self.driver.current_url
-            if "feed" in current_url or "in/" in current_url:
-                logger.info("✅ Login successful!")
-                self.logged_in = True
-                return True
-            elif "challenge" in current_url:
-                logger.warning("⚠️  LinkedIn requires additional verification (captcha/2FA)")
-                input("Por favor completa la verificación en el navegador y presiona Enter...")
-                self.logged_in = True
-                return True
-            else:
-                logger.error("❌ Login failed")
-                return False
-                
-        except Exception as e:
-            logger.error(f"Error during login: {e}")
-            return False
             
     def search_jobs(self, 
                    search_term: str = "DevOps", 
                    location: str = "España", 
-                   max_jobs: int = 50,
-                   email: str = None,
-                   password: str = None) -> List[Dict]:
+                   max_jobs: int = 50) -> List[Dict]:
         """
         Search for jobs on LinkedIn with multiple strategies
         """
         jobs_data = []
         
-        # If credentials provided, try to login first
-        if email and password and not self.logged_in:
-            logger.info("🔑 Intentando login con credenciales de LinkedIn...")
-            if self.login_to_linkedin(email, password):
-                logger.info("✅ Login exitoso, usando búsqueda autenticada")
-            else:
-                logger.warning("⚠️  Login falló, usando búsqueda pública")
-        
-        # Strategy 1: Try authenticated search if logged in
-        if self.logged_in:
-            try:
-                jobs_data = self._scrape_linkedin_authenticated(search_term, location, max_jobs)
-                if jobs_data:
-                    logger.info(f"Authenticated scraping successful, found {len(jobs_data)} jobs")
-                    return jobs_data
-            except Exception as e:
-                logger.error(f"Authenticated scraping failed: {e}")
-        
-        # Strategy 2: Try direct scraping
+        # Strategy 1: Try direct scraping
         try:
             jobs_data = self._scrape_linkedin_direct(search_term, location, max_jobs)
             if jobs_data:
@@ -149,7 +81,7 @@ class LinkedInScraper:
         except Exception as e:
             logger.error(f"Direct scraping failed: {e}")
         
-        # Strategy 3: Try with alternative selectors
+        # Strategy 2: Try with alternative selectors
         try:
             jobs_data = self._scrape_with_alternative_selectors(search_term, location, max_jobs)
             if jobs_data:
@@ -158,7 +90,7 @@ class LinkedInScraper:
         except Exception as e:
             logger.error(f"Alternative scraping failed: {e}")
         
-        # Strategy 4: Generate sample data as fallback
+        # Strategy 3: Generate sample data as fallback
         logger.warning("All scraping methods failed, generating sample data")
         return self._generate_sample_devops_jobs(search_term, location)
 
@@ -209,70 +141,6 @@ class LinkedInScraper:
                 continue
                 
         return jobs_data
-
-    def _scrape_linkedin_authenticated(self, search_term: str, location: str, max_jobs: int) -> List[Dict]:
-        """Authenticated LinkedIn scraping method with better access"""
-        jobs_data = []
-        
-        # Build authenticated search URL
-        search_url = f"{self.base_url}/jobs/search?"
-        search_url += f"keywords={search_term.replace(' ', '%20')}"
-        if location and location.lower() != "worldwide":
-            search_url += f"&location={location.replace(' ', '%20')}"
-        search_url += "&f_TPR=r2592000"  # Last month for more results
-        search_url += "&f_JT=F"  # Full-time only
-        search_url += "&f_WRA=true"  # Remote jobs
-        
-        logger.info(f"🔍 Authenticated search with URL: {search_url}")
-        self.driver.get(search_url)
-        time.sleep(3)
-        
-        # Wait for authenticated content to load
-        try:
-            self.wait.until(
-                EC.any_of(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, ".jobs-search-results-list")),
-                    EC.presence_of_element_located((By.CSS_SELECTOR, ".jobs-search__results-list"))
-                )
-            )
-        except TimeoutException:
-            logger.warning("Timeout waiting for search results")
-        
-        # Scroll to load more jobs
-        self._scroll_and_wait(max_jobs)
-        
-        # Try multiple selectors for authenticated job cards
-        authenticated_selectors = [
-            ".jobs-search-results__list-item",
-            ".job-search-card",
-            "[data-job-id]",
-            ".jobs-search-results-list .result-card",
-            ".ember-view.job-search-card"
-        ]
-        
-        job_cards = []
-        for selector in authenticated_selectors:
-            job_cards = self.driver.find_elements(By.CSS_SELECTOR, selector)
-            if job_cards:
-                logger.info(f"✅ Found {len(job_cards)} job cards with authenticated selector: {selector}")
-                break
-        
-        if not job_cards:
-            raise Exception("No authenticated job cards found")
-        
-        for i, card in enumerate(job_cards[:max_jobs]):
-            try:
-                job_data = self._extract_authenticated_job_data(card, i)
-                if job_data:
-                    job_data['requires_english'] = self._check_english_requirement(job_data)
-                    jobs_data.append(job_data)
-                    logger.info(f"📝 Extracted job {i+1}: {job_data['title']} at {job_data['company']}")
-                    
-            except Exception as e:
-                logger.error(f"Error extracting authenticated job {i}: {e}")
-                continue
-        
-        return jobs_data
         
     def _scrape_with_alternative_selectors(self, search_term: str, location: str, max_jobs: int) -> List[Dict]:
         """Alternative scraping method with different approach"""
@@ -313,149 +181,6 @@ class LinkedInScraper:
                 continue
                 
         return jobs_data
-
-    def _scroll_and_wait(self, max_jobs: int):
-        """Scroll and wait for more jobs to load in authenticated mode"""
-        last_height = self.driver.execute_script("return document.body.scrollHeight")
-        jobs_loaded = 0
-        
-        for _ in range(5):  # Max 5 scroll attempts
-            # Scroll down
-            self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            time.sleep(2)
-            
-            # Count current jobs
-            current_jobs = len(self.driver.find_elements(By.CSS_SELECTOR, "[data-job-id], .job-search-card"))
-            if current_jobs >= max_jobs:
-                logger.info(f"✅ Loaded {current_jobs} jobs (target: {max_jobs})")
-                break
-                
-            # Check if new content loaded
-            new_height = self.driver.execute_script("return document.body.scrollHeight")
-            if new_height == last_height:
-                logger.info(f"📄 No more content to load. Total jobs: {current_jobs}")
-                break
-            last_height = new_height
-
-    def _extract_authenticated_job_data(self, job_card, index: int) -> Optional[Dict]:
-        """Extract job data from authenticated LinkedIn session"""
-        try:
-            # Try to click on the job card to load details
-            try:
-                # Scroll the job card into view
-                self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", job_card)
-                time.sleep(0.5)
-                
-                # Click on the job card
-                job_card.click()
-                time.sleep(1.5)  # Wait for job details to load
-            except Exception as e:
-                logger.warning(f"Could not click job card {index}: {e}")
-            
-            # Extract job information from card
-            title = "DevOps Engineer"
-            company = "Tech Company"
-            location = "Chile"
-            description = "DevOps position with modern technologies"
-            job_url = f"https://linkedin.com/jobs/view/{index}"
-            
-            # Try to extract real data with multiple selectors
-            try:
-                # Title selectors
-                title_selectors = [
-                    ".job-details-jobs-unified-top-card__job-title h1",
-                    ".jobs-unified-top-card__job-title",
-                    ".job-search-card__title a",
-                    "h3 a",
-                    ".job-title"
-                ]
-                for selector in title_selectors:
-                    try:
-                        title_elem = job_card.find_element(By.CSS_SELECTOR, selector)
-                        title = title_elem.text.strip() or title_elem.get_attribute("title") or title
-                        if title and title != "DevOps Engineer":
-                            break
-                    except:
-                        continue
-                        
-                # Company selectors
-                company_selectors = [
-                    ".job-details-jobs-unified-top-card__primary-description-container .app-aware-link",
-                    ".jobs-unified-top-card__company-name",
-                    ".job-search-card__subtitle-link",
-                    ".company-name",
-                    "h4"
-                ]
-                for selector in company_selectors:
-                    try:
-                        company_elem = job_card.find_element(By.CSS_SELECTOR, selector)
-                        company = company_elem.text.strip() or company
-                        if company and company != "Tech Company":
-                            break
-                    except:
-                        continue
-                        
-                # Location selectors
-                location_selectors = [
-                    ".job-details-jobs-unified-top-card__primary-description-container .tvm__text--low-emphasis",
-                    ".jobs-unified-top-card__bullet",
-                    ".job-search-card__location",
-                    ".job-location"
-                ]
-                for selector in location_selectors:
-                    try:
-                        location_elem = job_card.find_element(By.CSS_SELECTOR, selector)
-                        location_text = location_elem.text.strip()
-                        if location_text and "·" not in location_text:  # Avoid bullet separators
-                            location = location_text or location
-                            break
-                    except:
-                        continue
-                
-                # Try to get job URL
-                try:
-                    link_elem = job_card.find_element(By.CSS_SELECTOR, "a[href*='/jobs/view/']")
-                    job_url = link_elem.get_attribute("href")
-                except:
-                    pass
-                    
-                # Try to get description from job details panel
-                try:
-                    description_selectors = [
-                        ".jobs-description-content__text",
-                        ".job-view-layout .jobs-description",
-                        ".jobs-box__html-content"
-                    ]
-                    for selector in description_selectors:
-                        try:
-                            desc_elem = self.driver.find_element(By.CSS_SELECTOR, selector)
-                            if desc_elem.is_displayed():
-                                description = desc_elem.text.strip()[:500] or description
-                                break
-                        except:
-                            continue
-                except:
-                    pass
-                    
-            except Exception as e:
-                logger.warning(f"Could not extract full job data for job {index}: {e}")
-            
-            return {
-                'title': title,
-                'company': company,
-                'location': location,
-                'description': description,
-                'linkedin_job_id': f"auth_{index}_{int(time.time())}",
-                'linkedin_url': job_url,
-                'posted_date': datetime.utcnow(),
-                'salary_range': None,
-                'employment_type': 'Full-time',
-                'seniority_level': 'Mid Level'
-            }
-            
-        except Exception as e:
-            logger.error(f"Error in authenticated extraction for job {index}: {e}")
-            return None
 
     def _extract_job_data_simple(self, job_card, index: int) -> Optional[Dict]:
         """Simple job data extraction without clicking"""
